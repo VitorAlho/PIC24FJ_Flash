@@ -45,12 +45,113 @@
 /**
   Section: Included Files
 */
+#include <stdint.h>
 #include "mcc_generated_files/system.h"
-#include "mcc_generated_files/memory/flash_demo.h"
+#include "mcc_generated_files/memory/flash.h"
+//#include "mcc_generated_files/memory/flash_demo.h"
 
 /*
                          Main application
  */
+
+typedef struct{
+    uint16_t tag[1000];
+    uint16_t lastRegister;
+}GreenList;
+
+GreenList __attribute__((far)) greenList ,  __attribute__((far)) greenListTest;
+
+void greenList_clearList(GreenList *_greenList){
+    _greenList->lastRegister = 0;
+}
+
+void greenList_addTag(uint16_t _tag, GreenList *_greenList){
+    (*_greenList).tag[(*_greenList).lastRegister++] = _tag;
+}
+
+static __prog__ uint8_t memoriaFlash_Page1[FLASH_ERASE_PAGE_SIZE_IN_PC_UNITS] __attribute__((space(prog),aligned(FLASH_ERASE_PAGE_SIZE_IN_PC_UNITS)));
+
+static __prog__ uint8_t memoriaFlash_Page2[FLASH_ERASE_PAGE_SIZE_IN_PC_UNITS] __attribute__((space(prog),aligned(FLASH_ERASE_PAGE_SIZE_IN_PC_UNITS)));
+
+
+static void WordWriteExample()
+{
+
+    uint32_t flash_storage_address_page1;
+    uint32_t flash_storage_address_page2;
+    bool result;
+
+    int i=0;
+    
+    for(i=0;i<1000;i++){
+        greenList_addTag(0x0001+i,&greenList);
+    }
+    
+    // Get flash page aligned address of flash reserved above for this test.
+    flash_storage_address_page1 = FLASH_GetErasePageAddress((uint32_t)&memoriaFlash_Page1[0]);
+    flash_storage_address_page2 = FLASH_GetErasePageAddress((uint32_t)&memoriaFlash_Page2[0]);
+
+    // Program Valid Key for NVM Commands
+    FLASH_Unlock(FLASH_UNLOCK_KEY);
+
+    // Erase the page of flash at this address
+    result = FLASH_ErasePage(flash_storage_address_page1);
+    result = FLASH_ErasePage(flash_storage_address_page2);
+    
+    if (result == false)
+    {
+       //FlashError();
+        while(1);
+    }      
+        
+    for( i = 0; i < greenList.lastRegister; i++ ){    
+        if( i == 0 ){
+            result  = FLASH_WriteWord16( flash_storage_address_page1, greenList.tag[i] );
+        }
+        else{
+            if( i < 512 ){
+                result &= FLASH_WriteWord16( flash_storage_address_page1 + i * 2U, greenList.tag[i] ); 
+            }
+            else{
+                if( i == 512 ){
+                    result  = FLASH_WriteWord16( flash_storage_address_page2, greenList.tag[i] );
+                }
+                else{
+                    result &= FLASH_WriteWord16( flash_storage_address_page2 + (i - 512) * 2U, greenList.tag[i] );
+                }
+            }
+        }
+    }    
+    
+    if (result == false)
+    {
+        //FlashError();
+        while(1);
+    }
+
+    // Clear Key for NVM Commands so accidental call to flash routines will not corrupt flash
+    FLASH_Lock();
+    
+    // read the data to verify the data
+    for( i = 0; i < greenList.lastRegister; i++ ){
+        if( i < 512 ){
+            greenList_addTag( FLASH_ReadWord16(flash_storage_address_page1 + i * 2U), &greenListTest );
+        }
+        else{
+            greenList_addTag( FLASH_ReadWord16(flash_storage_address_page2 + (i-512) * 2U), &greenListTest );
+        }        
+    }    
+
+    // Stop if the read data does not match the write data;
+    for( i = 0; i < greenList.lastRegister; i++ ){
+        if ( greenList.tag[i] != greenListTest.tag[i] ){
+              //MiscompareError();  
+            while(1);
+        }
+    }      
+}
+
+
 int main(void)
 {
     // initialize the device
@@ -58,7 +159,8 @@ int main(void)
 
     while (1)
     {
-        FlashDemo();
+        WordWriteExample();
+        //FlashDemo();
         // Add your application code
     }
 
