@@ -5,10 +5,9 @@
         <group>
             <file>file:/C:/00_MPLABX_V5.40/PIC24_FLASH/main.c</file>
             <file>file:/C:/00_MPLABX_V5.40/PIC24_FLASH/mcc_generated_files/memory/flash.s</file>
-            <file>file:/C:/00_MPLABX_V5.40/PIC24_FLASH/mcc_generated_files/memory/flash.h</file>
-            <file>file:/C:/00_MPLABX_V5.40/PIC24_FLASH/mcc_generated_files/memory/flash_demo.c</file>
+            <file>file:/C:/00_MPLABX_V5.40/PIC24_FLASH/LIST/list.h</file>
             <file>file:/C:/00_MPLABX_V5.40/PIC24_FLASH/mcc_generated_files/system.c</file>
-            <file>file:/C:/00_MPLABX_V5.40/PIC24_FLASH/mcc_generated_files/traps.c</file>
+            <file>file:/C:/00_MPLABX_V5.40/PIC24_FLASH/LIST/list.c</file>
         </group>
     </open-files>
 </project-private>

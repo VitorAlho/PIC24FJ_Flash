@@ -48,44 +48,37 @@
 #include <stdint.h>
 #include "mcc_generated_files/system.h"
 #include "mcc_generated_files/memory/flash.h"
-//#include "mcc_generated_files/memory/flash_demo.h"
+#include "LIST/list.h"
 
 /*
                          Main application
  */
 
-typedef struct{
-    uint16_t tag[1000];
-    uint16_t lastRegister;
-}GreenList;
+List __attribute__((far)) greenList;
 
-GreenList __attribute__((far)) greenList ,  __attribute__((far)) greenListTest;
-
-void greenList_clearList(GreenList *_greenList){
-    _greenList->lastRegister = 0;
-}
-
-void greenList_addTag(uint16_t _tag, GreenList *_greenList){
-    (*_greenList).tag[(*_greenList).lastRegister++] = _tag;
-}
+List __attribute__((far)) greenListTest;
 
 static __prog__ uint8_t memoriaFlash_Page1[FLASH_ERASE_PAGE_SIZE_IN_PC_UNITS] __attribute__((space(prog),aligned(FLASH_ERASE_PAGE_SIZE_IN_PC_UNITS)));
 
 static __prog__ uint8_t memoriaFlash_Page2[FLASH_ERASE_PAGE_SIZE_IN_PC_UNITS] __attribute__((space(prog),aligned(FLASH_ERASE_PAGE_SIZE_IN_PC_UNITS)));
 
-
-static void WordWriteExample()
-{
+static void WordWriteExample(){
 
     uint32_t flash_storage_address_page1;
     uint32_t flash_storage_address_page2;
     bool result;
 
+    int8_t result_list = 0;
+    
     int i=0;
     
+    result_list = createNewList(sizeof(uint16_t),1000,&greenList);
+    
     for(i=0;i<1000;i++){
-        greenList_addTag(0x0001+i,&greenList);
+        addElementToList( &greenList, 0x0001+i );
     }
+    
+    result_list = createNewList(sizeof(uint16_t),1000,&greenListTest);
     
     // Get flash page aligned address of flash reserved above for this test.
     flash_storage_address_page1 = FLASH_GetErasePageAddress((uint32_t)&memoriaFlash_Page1[0]);
@@ -103,21 +96,26 @@ static void WordWriteExample()
        //FlashError();
         while(1);
     }      
+    
+    uint16_t element;
+    
+    for( i = 0; i < greenList.lastRegister; i++ ){  
         
-    for( i = 0; i < greenList.lastRegister; i++ ){    
-        if( i == 0 ){
-            result  = FLASH_WriteWord16( flash_storage_address_page1, greenList.tag[i] );
+        getElementFromList(&greenList, i, &element );
+        
+        if( i == 0 ){            
+            result  = FLASH_WriteWord16( flash_storage_address_page1, element);
         }
         else{
             if( i < 512 ){
-                result &= FLASH_WriteWord16( flash_storage_address_page1 + i * 2U, greenList.tag[i] ); 
+                result &= FLASH_WriteWord16( flash_storage_address_page1 + i * 2U, element ); 
             }
             else{
                 if( i == 512 ){
-                    result  = FLASH_WriteWord16( flash_storage_address_page2, greenList.tag[i] );
+                    result  = FLASH_WriteWord16( flash_storage_address_page2, element );
                 }
                 else{
-                    result &= FLASH_WriteWord16( flash_storage_address_page2 + (i - 512) * 2U, greenList.tag[i] );
+                    result &= FLASH_WriteWord16( flash_storage_address_page2 + (i - 512) * 2U, element );
                 }
             }
         }
@@ -135,22 +133,26 @@ static void WordWriteExample()
     // read the data to verify the data
     for( i = 0; i < greenList.lastRegister; i++ ){
         if( i < 512 ){
-            greenList_addTag( FLASH_ReadWord16(flash_storage_address_page1 + i * 2U), &greenListTest );
+            addElementToList( &greenListTest, FLASH_ReadWord16( flash_storage_address_page1 + i * 2U ) );
         }
         else{
-            greenList_addTag( FLASH_ReadWord16(flash_storage_address_page2 + (i-512) * 2U), &greenListTest );
+            addElementToList( &greenListTest, FLASH_ReadWord16( flash_storage_address_page2 + (i-512) * 2U ) );
         }        
     }    
 
+    uint16_t var1,var2;
     // Stop if the read data does not match the write data;
     for( i = 0; i < greenList.lastRegister; i++ ){
-        if ( greenList.tag[i] != greenListTest.tag[i] ){
+        
+        getElementFromList( &greenList, i, &var1);
+        getElementFromList( &greenListTest, i, &var2);
+        
+        if ( var1 != var2 ){
               //MiscompareError();  
             while(1);
         }
     }      
 }
-
 
 int main(void)
 {
